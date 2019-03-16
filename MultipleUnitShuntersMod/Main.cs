@@ -46,9 +46,9 @@ namespace MultipleUnitShuntersMod
                     continue;
                 }
 
-                if (trainset.cars[i].carType == TrainCarType.LocoShunter)
+                if (car.carType == TrainCarType.LocoShunter)
                 {
-                    LocoControllerShunter locoController = trainset.cars[i].GetComponent<LocoControllerShunter>();
+                    LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
 
                     if (locoController)
                     {
@@ -73,27 +73,49 @@ namespace MultipleUnitShuntersMod
 
             Trainset trainset = PlayerManager.Trainset;
 
-            if (trainset == null)
+            if (trainset == null || trainset.cars.Count < 2)
             {
                 return;
             }
 
-            for (int i = 0; i < trainset.cars.Count; i++)
+            List<TrainCar> trainsetCars = trainset.cars;
+
+            for (int i = 0; i < trainsetCars.Count; i++)
             {
-                TrainCar car = trainset.cars[i];
+                TrainCar car = trainsetCars[i];
 
                 if (PlayerManager.Car.Equals(car))
                 {
                     continue;
                 }
 
-                if (trainset.cars[i].carType == TrainCarType.LocoShunter)
+                if (car.carType == TrainCarType.LocoShunter)
                 {
-                    LocoControllerShunter locoController = trainset.cars[i].GetComponent<LocoControllerShunter>();
+                    LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
 
                     if (locoController)
                     {
-                        locoController.SetReverser(position);
+                        if (Trainset.GetCarsBehind(PlayerManager.Car).Contains(car))
+                        {
+                            if (Trainset.GetCarsInFrontOf(car).Contains(PlayerManager.Car))
+                            {
+                                locoController.SetReverser(position);
+                            } else
+                            {
+                                locoController.SetReverser(position * -1f);
+                            }
+                        }
+                        else if (Trainset.GetCarsInFrontOf(PlayerManager.Car).Contains(car))
+                        {
+                            if (Trainset.GetCarsBehind(car).Contains(PlayerManager.Car))
+                            {
+                                locoController.SetReverser(position);
+                            }
+                            else
+                            {
+                                locoController.SetReverser(position * -1f);
+                            }
+                        }
                     }
                 }
             }
@@ -128,9 +150,9 @@ namespace MultipleUnitShuntersMod
                     continue;
                 }
 
-                if (trainset.cars[i].carType == TrainCarType.LocoShunter)
+                if (car.carType == TrainCarType.LocoShunter)
                 {
-                    LocoControllerShunter locoController = trainset.cars[i].GetComponent<LocoControllerShunter>();
+                    LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
 
                     if (locoController)
                     {
