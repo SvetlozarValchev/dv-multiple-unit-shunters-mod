@@ -140,4 +140,49 @@ namespace MultipleUnitShuntersMod
             }
         }
     }
+    
+    [HarmonyPatch(typeof(ShunterDashboardControls), "OnEnable")]
+    class ShunterDashboardControls_OnEnable_Patch
+    {
+        static ShunterDashboardControls instance;
+
+        static void Postfix(ShunterDashboardControls __instance)
+        {
+            instance = __instance;
+
+            __instance.StartCoroutine(AttachListeners());
+        }
+
+        static IEnumerator<object> AttachListeners()
+        {
+            yield return (object)null;
+
+            DV.CabControls.ControlImplBase sandDeployCtrl = instance.sandDeployBtn.GetComponent<DV.CabControls.ControlImplBase>();
+            
+            sandDeployCtrl.ValueChanged += (e =>
+            {
+                if (PlayerManager.Trainset == null) return;
+
+                for (int i = 0; i < PlayerManager.Trainset.cars.Count; i++)
+                {
+                    TrainCar car = PlayerManager.Trainset.cars[i];
+
+                    if (PlayerManager.Car.Equals(car))
+                    {
+                        continue;
+                    }
+
+                    if (car.carType == TrainCarType.LocoShunter)
+                    {
+                        LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+
+                        if (locoController)
+                        {
+                            locoController.SetSandersOn(Convert.ToBoolean(e.newValue));
+                        }
+                    }
+                }
+            });
+        }
+    }
 }
