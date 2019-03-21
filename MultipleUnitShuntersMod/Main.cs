@@ -13,11 +13,12 @@ namespace MultipleUnitShuntersMod
         {
             var harmony = HarmonyInstance.Create(modEntry.Info.Id);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
-            // Something
-            return true; // If false the mod will show an error.
+
+            return true;
         }
     }
 
+    // throttle
     [HarmonyPatch(typeof(LocoControllerShunter), "SetThrottle")]
     class LocoControllerShunter_SetThrottle_Patch
     {
@@ -59,6 +60,7 @@ namespace MultipleUnitShuntersMod
         }
     }
 
+    // reverser
     [HarmonyPatch(typeof(LocoControllerShunter), "SetReverser")]
     class LocoControllerShunter_SetReverser_Patch
     {
@@ -122,6 +124,7 @@ namespace MultipleUnitShuntersMod
         }
     }
 
+    // brake
     [HarmonyPatch(typeof(LocoControllerShunter), "SetBrake")]
     class LocoControllerShunter_SetBrake_Patch
     {
@@ -162,9 +165,10 @@ namespace MultipleUnitShuntersMod
             }
         }
     }
-    
+
+    // sander & fan
     [HarmonyPatch(typeof(ShunterDashboardControls), "OnEnable")]
-    class ShunterDashboardControls_OnEnable_Patch
+    class ShunterDashboardControls_OnEnable_Patch2
     {
         static ShunterDashboardControls instance;
 
@@ -180,7 +184,7 @@ namespace MultipleUnitShuntersMod
             yield return (object)null;
 
             DV.CabControls.ControlImplBase sandDeployCtrl = instance.sandDeployBtn.GetComponent<DV.CabControls.ControlImplBase>();
-            
+
             sandDeployCtrl.ValueChanged += (e =>
             {
                 if (PlayerManager.Trainset == null) return;
@@ -200,7 +204,34 @@ namespace MultipleUnitShuntersMod
 
                         if (locoController)
                         {
-                            locoController.SetSandersOn(Convert.ToBoolean(e.newValue));
+                            locoController.SetSandersOn(e.newValue >= 0.5f);
+                        }
+                    }
+                }
+            });
+
+            DV.CabControls.ControlImplBase fanCtrl = instance.fanSwitchButton.GetComponent<DV.CabControls.ControlImplBase>();
+
+            fanCtrl.ValueChanged += (e =>
+            {
+                if (PlayerManager.Trainset == null) return;
+
+                for (int i = 0; i < PlayerManager.Trainset.cars.Count; i++)
+                {
+                    TrainCar car = PlayerManager.Trainset.cars[i];
+
+                    if (PlayerManager.Car.Equals(car))
+                    {
+                        continue;
+                    }
+
+                    if (car.carType == TrainCarType.LocoShunter)
+                    {
+                        LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+
+                        if (locoController)
+                        {
+                            locoController.SetFan(e.newValue >= 0.5f);
                         }
                     }
                 }
