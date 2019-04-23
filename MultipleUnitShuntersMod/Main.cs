@@ -181,8 +181,6 @@ namespace MultipleUnitShuntersMod
             TrainCar targetCar;
             Trainset trainset;
 
-            Debug.Log("part 1");
-
             if (Main.remoteCar)
             {
                 targetCar = Main.remoteCar;
@@ -194,14 +192,10 @@ namespace MultipleUnitShuntersMod
                 trainset = PlayerManager.Trainset;
             }
 
-            Debug.Log("part 2");
-
             if (currentCar == null || !targetCar || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
             {
                 return;
             }
-
-            Debug.Log("part 3");
 
             for (int i = 0; i < trainset.cars.Count; i++)
             {
@@ -212,18 +206,12 @@ namespace MultipleUnitShuntersMod
                     continue;
                 }
 
-                Debug.Log("part 4");
-
                 if (car.carType == TrainCarType.LocoShunter)
                 {
                     LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
 
-                    Debug.Log("part 5");
-
                     if (locoController)
                     {
-                        Debug.Log("part 6");
-
                         locoController.SetBrake(brake);
                     }
                 }
