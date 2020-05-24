@@ -5,7 +5,7 @@ using UnityModManagerNet;
 using Harmony12;
 using UnityEngine;
 
-namespace MultipleUnitShuntersMod
+namespace MultipleUnitDieselsMod
 {
     public class Main
     {
@@ -37,21 +37,21 @@ namespace MultipleUnitShuntersMod
         static void Postfix(LocoControllerShunter __instance, float throttleLever)
         {
             TrainCar currentCar = __instance.GetComponent<TrainCar>();
-            TrainCar targetCar;
-            Trainset trainset;
+            TrainCar targetCar = null;
+            Trainset trainset = null;
 
             if (Main.remoteCar)
             {
                 targetCar = Main.remoteCar;
-                trainset = Trainset.GetFromCar(targetCar);
+                trainset = targetCar.trainset;
             }
-            else
+            else if (PlayerManager.Car != null)
             {
                 targetCar = PlayerManager.Car;
-                trainset = PlayerManager.Trainset;
+                trainset = PlayerManager.Car.trainset;
             }
 
-            if (currentCar == null || !targetCar || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
+            if (currentCar == null || targetCar == null || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
             {
                 return;
             }
@@ -80,6 +80,56 @@ namespace MultipleUnitShuntersMod
         }
     }
 
+    // throttle
+    [HarmonyPatch(typeof(LocoControllerDiesel), "SetThrottle")]
+    class LocoControllerDiesel_SetThrottle_Patch
+    {
+        static void Postfix(LocoControllerDiesel __instance, float throttleLever)
+        {
+            TrainCar currentCar = __instance.GetComponent<TrainCar>();
+            TrainCar targetCar = null;
+            Trainset trainset = null;
+
+            if (Main.remoteCar)
+            {
+                targetCar = Main.remoteCar;
+                trainset = targetCar.trainset;
+            }
+            else if (PlayerManager.Car != null)
+            {
+                targetCar = PlayerManager.Car;
+                trainset = PlayerManager.Car.trainset;
+            }
+
+            if (currentCar == null || targetCar == null || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
+            {
+                return;
+            }
+
+            for (int i = 0; i < trainset.cars.Count; i++)
+            {
+                TrainCar car = trainset.cars[i];
+
+                if (targetCar.Equals(car))
+                {
+                    continue;
+                }
+
+                if (car.carType == TrainCarType.LocoDiesel)
+                {
+                    LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
+
+                    if (locoController)
+                    {
+                        locoController.SetThrottle(throttleLever);
+                    }
+                }
+            }
+
+            Main.remoteCar = null;
+        }
+    }
+
     // reverser remote control
     [HarmonyPatch(typeof(LocoControllerBase), "UpdateReverser")]
     class LocoControllerBase_UpdateReverser_Patch
@@ -91,26 +141,27 @@ namespace MultipleUnitShuntersMod
     }
 
     // reverser
-        [HarmonyPatch(typeof(LocoControllerShunter), "SetReverser")]
+    [HarmonyPatch(typeof(LocoControllerShunter), "SetReverser")]
     class LocoControllerShunter_SetReverser_Patch
     {
         static void Postfix(LocoControllerShunter __instance, float position)
         {
             TrainCar currentCar = __instance.GetComponent<TrainCar>();
-            TrainCar targetCar;
-            Trainset trainset;
+            TrainCar targetCar = null;
+            Trainset trainset = null;
 
             if (Main.remoteCar)
             {
                 targetCar = Main.remoteCar;
-                trainset = Trainset.GetFromCar(targetCar);
-            } else
+                trainset = targetCar.trainset;
+            }
+            else if (PlayerManager.Car != null)
             {
                 targetCar = PlayerManager.Car;
-                trainset = PlayerManager.Trainset;
+                trainset = PlayerManager.Car.trainset;
             }
 
-            if (currentCar == null || !targetCar || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
+            if (currentCar == null || targetCar == null || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
             {
                 return;
             }
@@ -132,19 +183,20 @@ namespace MultipleUnitShuntersMod
 
                     if (locoController)
                     {
-                        if (Trainset.GetCarsBehind(targetCar).Contains(car))
+                        if (GetCarsBehind(targetCar).Contains(car))
                         {
-                            if (Trainset.GetCarsInFrontOf(car).Contains(targetCar))
+                            if (GetCarsInFrontOf(car).Contains(targetCar))
                             {
                                 locoController.SetReverser(position);
-                            } else
+                            }
+                            else
                             {
                                 locoController.SetReverser(position * -1f);
                             }
                         }
-                        else if (Trainset.GetCarsInFrontOf(targetCar).Contains(car))
+                        else if (GetCarsInFrontOf(targetCar).Contains(car))
                         {
-                            if (Trainset.GetCarsBehind(car).Contains(targetCar))
+                            if (GetCarsBehind(car).Contains(targetCar))
                             {
                                 locoController.SetReverser(position);
                             }
@@ -158,6 +210,115 @@ namespace MultipleUnitShuntersMod
             }
 
             Main.remoteCar = null;
+        }
+
+        public static List<TrainCar> GetCarsInFrontOf(TrainCar car)
+        {
+            return GetCarsCoupledTo(car.frontCoupler);
+        }
+
+        public static List<TrainCar> GetCarsBehind(TrainCar car)
+        {
+            return GetCarsCoupledTo(car.rearCoupler);
+        }
+
+        public static List<TrainCar> GetCarsCoupledTo(Coupler coupler)
+        {
+            List<TrainCar> trainCarList = new List<TrainCar>();
+            for (coupler = coupler.GetCoupled(); coupler != null; coupler = coupler.GetOppositeCoupler().GetCoupled())
+                trainCarList.Add(coupler.train);
+            return trainCarList;
+        }
+    }
+
+    // reverser
+    [HarmonyPatch(typeof(LocoControllerDiesel), "SetReverser")]
+    class LocoControllerDiesel_SetReverser_Patch
+    {
+        static void Postfix(LocoControllerDiesel __instance, float position)
+        {
+            TrainCar currentCar = __instance.GetComponent<TrainCar>();
+            TrainCar targetCar = null;
+            Trainset trainset = null;
+
+            if (Main.remoteCar)
+            {
+                targetCar = Main.remoteCar;
+                trainset = targetCar.trainset;
+            }
+            else if (PlayerManager.Car != null)
+            {
+                targetCar = PlayerManager.Car;
+                trainset = PlayerManager.Car.trainset;
+            }
+
+            if (currentCar == null || targetCar == null || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
+            {
+                return;
+            }
+
+            List<TrainCar> trainsetCars = trainset.cars;
+
+            for (int i = 0; i < trainsetCars.Count; i++)
+            {
+                TrainCar car = trainsetCars[i];
+
+                if (targetCar.Equals(car))
+                {
+                    continue;
+                }
+
+                if (car.carType == TrainCarType.LocoDiesel)
+                {
+                    LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
+
+                    if (locoController)
+                    {
+                        if (GetCarsBehind(targetCar).Contains(car))
+                        {
+                            if (GetCarsInFrontOf(car).Contains(targetCar))
+                            {
+                                locoController.SetReverser(position);
+                            }
+                            else
+                            {
+                                locoController.SetReverser(position * -1f);
+                            }
+                        }
+                        else if (GetCarsInFrontOf(targetCar).Contains(car))
+                        {
+                            if (GetCarsBehind(car).Contains(targetCar))
+                            {
+                                locoController.SetReverser(position);
+                            }
+                            else
+                            {
+                                locoController.SetReverser(position * -1f);
+                            }
+                        }
+                    }
+                }
+            }
+
+            Main.remoteCar = null;
+        }
+
+        public static List<TrainCar> GetCarsInFrontOf(TrainCar car)
+        {
+            return GetCarsCoupledTo(car.frontCoupler);
+        }
+
+        public static List<TrainCar> GetCarsBehind(TrainCar car)
+        {
+            return GetCarsCoupledTo(car.rearCoupler);
+        }
+
+        public static List<TrainCar> GetCarsCoupledTo(Coupler coupler)
+        {
+            List<TrainCar> trainCarList = new List<TrainCar>();
+            for (coupler = coupler.GetCoupled(); coupler != null; coupler = coupler.GetOppositeCoupler().GetCoupled())
+                trainCarList.Add(coupler.train);
+            return trainCarList;
         }
     }
 
@@ -175,24 +336,24 @@ namespace MultipleUnitShuntersMod
     [HarmonyPatch(typeof(LocoControllerBase), "SetBrake")]
     class LocoControllerBase_SetBrake_Patch
     {
-        static void Postfix(LocoControllerBase __instance, float brake)
+        static void Postfix(LocoControllerBase __instance, float nextTargetBrake)
         {
             TrainCar currentCar = __instance.GetComponent<TrainCar>();
-            TrainCar targetCar;
-            Trainset trainset;
+            TrainCar targetCar = null;
+            Trainset trainset = null;
 
             if (Main.remoteCar)
             {
                 targetCar = Main.remoteCar;
-                trainset = Trainset.GetFromCar(targetCar);
+                trainset = targetCar.trainset;
             }
-            else
+            else if (PlayerManager.Car != null)
             {
                 targetCar = PlayerManager.Car;
-                trainset = PlayerManager.Trainset;
+                trainset = PlayerManager.Car.trainset;
             }
 
-            if (currentCar == null || !targetCar || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
+            if (currentCar == null || targetCar == null || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
             {
                 return;
             }
@@ -212,7 +373,85 @@ namespace MultipleUnitShuntersMod
 
                     if (locoController)
                     {
-                        locoController.SetBrake(brake);
+                        locoController.SetBrake(nextTargetBrake);
+                    }
+                }
+                else if (car.carType == TrainCarType.LocoDiesel)
+                {
+                    LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
+
+                    if (locoController)
+                    {
+                        locoController.SetBrake(nextTargetBrake);
+                    }
+                }
+            }
+
+            Main.remoteCar = null;
+        }
+    }
+
+    // independent brake remote control
+    [HarmonyPatch(typeof(LocoControllerBase), "UpdateIndependentBrake")]
+    class LocoControllerBase_UpdateIndependentBrake_Patch
+    {
+        static void Prefix(LocoControllerBase __instance)
+        {
+            Main.remoteCar = __instance.GetComponent<TrainCar>();
+        }
+    }
+
+    // independent brake
+    [HarmonyPatch(typeof(LocoControllerBase), "SetIndependentBrake")]
+    class LocoControllerBase_SetIndependentBrake_Patch
+    {
+        static void Postfix(LocoControllerBase __instance, float nextTargetIndependentBrake)
+        {
+            TrainCar currentCar = __instance.GetComponent<TrainCar>();
+            TrainCar targetCar = null;
+            Trainset trainset = null;
+
+            if (Main.remoteCar)
+            {
+                targetCar = Main.remoteCar;
+                trainset = targetCar.trainset;
+            }
+            else if (PlayerManager.Car != null)
+            {
+                targetCar = PlayerManager.Car;
+                trainset = PlayerManager.Car.trainset;
+            }
+
+            if (currentCar == null || targetCar == null || !targetCar.Equals(currentCar) || trainset == null || trainset.cars.Count < 2)
+            {
+                return;
+            }
+
+            for (int i = 0; i < trainset.cars.Count; i++)
+            {
+                TrainCar car = trainset.cars[i];
+
+                if (targetCar.Equals(car))
+                {
+                    continue;
+                }
+
+                if (car.carType == TrainCarType.LocoShunter)
+                {
+                    LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+
+                    if (locoController)
+                    {
+                        locoController.SetIndependentBrake(nextTargetIndependentBrake);
+                    }
+                }
+                else if (car.carType == TrainCarType.LocoDiesel)
+                {
+                    LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
+
+                    if (locoController)
+                    {
+                        locoController.SetIndependentBrake(nextTargetIndependentBrake);
                     }
                 }
             }
@@ -228,7 +467,7 @@ namespace MultipleUnitShuntersMod
         static void Prefix(LocoControllerShunter __instance, ToggleDirection toggle)
         {
             TrainCar targetCar = __instance.GetComponent<TrainCar>();
-            Trainset trainset = Trainset.GetFromCar(targetCar);
+            Trainset trainset = targetCar.trainset;
 
             if (trainset == null)
             {
@@ -247,6 +486,42 @@ namespace MultipleUnitShuntersMod
                 if (car.carType == TrainCarType.LocoShunter)
                 {
                     LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+
+                    if (locoController)
+                    {
+                        locoController.SetSandersOn(toggle == ToggleDirection.UP);
+                    }
+                }
+            }
+        }
+    }
+
+    // sand remote control
+    [HarmonyPatch(typeof(LocoControllerDiesel), "UpdateSand")]
+    class LocoControllerDiesel_UpdateSand_Patch
+    {
+        static void Prefix(LocoControllerDiesel __instance, ToggleDirection toggle)
+        {
+            TrainCar targetCar = __instance.GetComponent<TrainCar>();
+            Trainset trainset = targetCar.trainset;
+
+            if (trainset == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < trainset.cars.Count; i++)
+            {
+                TrainCar car = trainset.cars[i];
+
+                if (targetCar.Equals(car))
+                {
+                    continue;
+                }
+
+                if (car.carType == TrainCarType.LocoDiesel)
+                {
+                    LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
 
                     if (locoController)
                     {
@@ -278,11 +553,11 @@ namespace MultipleUnitShuntersMod
 
             sandDeployCtrl.ValueChanged += (e =>
             {
-                if (PlayerManager.Trainset == null) return;
+                if (PlayerManager.Car == null || PlayerManager.Car.trainset == null) return;
 
-                for (int i = 0; i < PlayerManager.Trainset.cars.Count; i++)
+                for (int i = 0; i < PlayerManager.Car.trainset.cars.Count; i++)
                 {
-                    TrainCar car = PlayerManager.Trainset.cars[i];
+                    TrainCar car = PlayerManager.Car.trainset.cars[i];
 
                     if (PlayerManager.Car.Equals(car))
                     {
@@ -305,11 +580,11 @@ namespace MultipleUnitShuntersMod
 
             fanCtrl.ValueChanged += (e =>
             {
-                if (PlayerManager.Trainset == null) return;
+                if (PlayerManager.Car == null || PlayerManager.Car.trainset == null) return;
 
-                for (int i = 0; i < PlayerManager.Trainset.cars.Count; i++)
+                for (int i = 0; i < PlayerManager.Car.trainset.cars.Count; i++)
                 {
-                    TrainCar car = PlayerManager.Trainset.cars[i];
+                    TrainCar car = PlayerManager.Car.trainset.cars[i];
 
                     if (PlayerManager.Car.Equals(car))
                     {
@@ -319,6 +594,79 @@ namespace MultipleUnitShuntersMod
                     if (car.carType == TrainCarType.LocoShunter)
                     {
                         LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+
+                        if (locoController)
+                        {
+                            locoController.SetFan(e.newValue >= 0.5f);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // sander & fan
+    [HarmonyPatch(typeof(DieselDashboardControls), "OnEnable")]
+    class DieselDashboardControls_OnEnable_Patch2
+    {
+        static DieselDashboardControls instance;
+
+        static void Postfix(DieselDashboardControls __instance)
+        {
+            instance = __instance;
+
+            __instance.StartCoroutine(AttachListeners());
+        }
+
+        static IEnumerator<object> AttachListeners()
+        {
+            yield return (object)null;
+
+            DV.CabControls.ControlImplBase sandDeployCtrl = instance.sandDeployBtn.GetComponent<DV.CabControls.ControlImplBase>();
+
+            sandDeployCtrl.ValueChanged += (e =>
+            {
+                if (PlayerManager.Car == null || PlayerManager.Car.trainset == null) return;
+
+                for (int i = 0; i < PlayerManager.Car.trainset.cars.Count; i++)
+                {
+                    TrainCar car = PlayerManager.Car.trainset.cars[i];
+
+                    if (PlayerManager.Car.Equals(car))
+                    {
+                        continue;
+                    }
+
+                    if (car.carType == TrainCarType.LocoDiesel)
+                    {
+                        LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
+
+                        if (locoController)
+                        {
+                            locoController.SetSandersOn(e.newValue >= 0.5f);
+                        }
+                    }
+                }
+            });
+
+            DV.CabControls.ControlImplBase fanCtrl = instance.fanSwitchButton.GetComponent<DV.CabControls.ControlImplBase>();
+
+            fanCtrl.ValueChanged += (e =>
+            {
+                if (PlayerManager.Car == null || PlayerManager.Car.trainset == null) return;
+
+                for (int i = 0; i < PlayerManager.Car.trainset.cars.Count; i++)
+                {
+                    TrainCar car = PlayerManager.Car.trainset.cars[i];
+
+                    if (PlayerManager.Car.Equals(car))
+                    {
+                        continue;
+                    }
+
+                    if (car.carType == TrainCarType.LocoDiesel)
+                    {
+                        LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
 
                         if (locoController)
                         {
