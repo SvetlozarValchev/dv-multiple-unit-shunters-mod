@@ -65,14 +65,20 @@ namespace MultipleUnitDieselsMod
                     continue;
                 }
 
-                if (car.carType == TrainCarType.LocoShunter)
-                {
-                    LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+                LocoControllerBase locoController = null;
 
-                    if (locoController)
-                    {
-                        locoController.SetThrottle(throttleLever);
-                    }
+                if (car.carType == TrainCarType.LocoDiesel)
+                {
+                    locoController = car.GetComponent<LocoControllerDiesel>();
+                }
+                else if (car.carType == TrainCarType.LocoShunter)
+                {
+                    locoController = car.GetComponent<LocoControllerShunter>();
+                }
+
+                if (locoController != null)
+                {
+                    locoController.SetThrottle(throttleLever);
                 }
             }
 
@@ -115,14 +121,19 @@ namespace MultipleUnitDieselsMod
                     continue;
                 }
 
+                LocoControllerBase locoController = null;
+
                 if (car.carType == TrainCarType.LocoDiesel)
                 {
-                    LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
+                    locoController = car.GetComponent<LocoControllerDiesel>();
+                } else if (car.carType == TrainCarType.LocoShunter)
+                {
+                    locoController = car.GetComponent<LocoControllerShunter>();
+                }
 
-                    if (locoController)
-                    {
-                        locoController.SetThrottle(throttleLever);
-                    }
+                if (locoController != null)
+                {
+                    locoController.SetThrottle(throttleLever);
                 }
             }
 
@@ -177,33 +188,38 @@ namespace MultipleUnitDieselsMod
                     continue;
                 }
 
+                LocoControllerBase locoController = null;
+
                 if (car.carType == TrainCarType.LocoShunter)
                 {
-                    LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+                     locoController = car.GetComponent<LocoControllerShunter>();
+                } else if (car.carType == TrainCarType.LocoDiesel)
+                {
+                    locoController = car.GetComponent<LocoControllerDiesel>();
+                }
 
-                    if (locoController)
+                if (locoController != null)
+                {
+                    if (GetCarsBehind(targetCar).Contains(car))
                     {
-                        if (GetCarsBehind(targetCar).Contains(car))
+                        if (GetCarsInFrontOf(car).Contains(targetCar))
                         {
-                            if (GetCarsInFrontOf(car).Contains(targetCar))
-                            {
-                                locoController.SetReverser(position);
-                            }
-                            else
-                            {
-                                locoController.SetReverser(position * -1f);
-                            }
+                            locoController.SetReverser(position);
                         }
-                        else if (GetCarsInFrontOf(targetCar).Contains(car))
+                        else
                         {
-                            if (GetCarsBehind(car).Contains(targetCar))
-                            {
-                                locoController.SetReverser(position);
-                            }
-                            else
-                            {
-                                locoController.SetReverser(position * -1f);
-                            }
+                            locoController.SetReverser(position * -1f);
+                        }
+                    }
+                    else if (GetCarsInFrontOf(targetCar).Contains(car))
+                    {
+                        if (GetCarsBehind(car).Contains(targetCar))
+                        {
+                            locoController.SetReverser(position);
+                        }
+                        else
+                        {
+                            locoController.SetReverser(position * -1f);
                         }
                     }
                 }
@@ -268,33 +284,39 @@ namespace MultipleUnitDieselsMod
                     continue;
                 }
 
-                if (car.carType == TrainCarType.LocoDiesel)
-                {
-                    LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
+                LocoControllerBase locoController = null;
 
-                    if (locoController)
+                if (car.carType == TrainCarType.LocoShunter)
+                {
+                    locoController = car.GetComponent<LocoControllerShunter>();
+                }
+                else if (car.carType == TrainCarType.LocoDiesel)
+                {
+                    locoController = car.GetComponent<LocoControllerDiesel>();
+                }
+
+                if (locoController != null)
+                {
+                    if (GetCarsBehind(targetCar).Contains(car))
                     {
-                        if (GetCarsBehind(targetCar).Contains(car))
+                        if (GetCarsInFrontOf(car).Contains(targetCar))
                         {
-                            if (GetCarsInFrontOf(car).Contains(targetCar))
-                            {
-                                locoController.SetReverser(position);
-                            }
-                            else
-                            {
-                                locoController.SetReverser(position * -1f);
-                            }
+                            locoController.SetReverser(position);
                         }
-                        else if (GetCarsInFrontOf(targetCar).Contains(car))
+                        else
                         {
-                            if (GetCarsBehind(car).Contains(targetCar))
-                            {
-                                locoController.SetReverser(position);
-                            }
-                            else
-                            {
-                                locoController.SetReverser(position * -1f);
-                            }
+                            locoController.SetReverser(position * -1f);
+                        }
+                    }
+                    else if (GetCarsInFrontOf(targetCar).Contains(car))
+                    {
+                        if (GetCarsBehind(car).Contains(targetCar))
+                        {
+                            locoController.SetReverser(position);
+                        }
+                        else
+                        {
+                            locoController.SetReverser(position * -1f);
                         }
                     }
                 }
@@ -487,7 +509,15 @@ namespace MultipleUnitDieselsMod
                 {
                     LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
 
-                    if (locoController)
+                    if (locoController != null)
+                    {
+                        locoController.SetSandersOn(toggle == ToggleDirection.UP);
+                    }
+                } else if (car.carType == TrainCarType.LocoDiesel)
+                {
+                    LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
+
+                    if (locoController != null)
                     {
                         locoController.SetSandersOn(toggle == ToggleDirection.UP);
                     }
@@ -519,11 +549,20 @@ namespace MultipleUnitDieselsMod
                     continue;
                 }
 
-                if (car.carType == TrainCarType.LocoDiesel)
+                if (car.carType == TrainCarType.LocoShunter)
+                {
+                    LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+
+                    if (locoController != null)
+                    {
+                        locoController.SetSandersOn(toggle == ToggleDirection.UP);
+                    }
+                }
+                else if (car.carType == TrainCarType.LocoDiesel)
                 {
                     LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
 
-                    if (locoController)
+                    if (locoController != null)
                     {
                         locoController.SetSandersOn(toggle == ToggleDirection.UP);
                     }
@@ -573,6 +612,15 @@ namespace MultipleUnitDieselsMod
                             locoController.SetSandersOn(e.newValue >= 0.5f);
                         }
                     }
+                    else if (car.carType == TrainCarType.LocoDiesel)
+                    {
+                        LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
+
+                        if (locoController)
+                        {
+                            locoController.SetSandersOn(e.newValue >= 0.5f);
+                        }
+                    }
                 }
             });
 
@@ -594,6 +642,15 @@ namespace MultipleUnitDieselsMod
                     if (car.carType == TrainCarType.LocoShunter)
                     {
                         LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+
+                        if (locoController)
+                        {
+                            locoController.SetFan(e.newValue >= 0.5f);
+                        }
+                    }
+                    else if (car.carType == TrainCarType.LocoDiesel)
+                    {
+                        LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
 
                         if (locoController)
                         {
@@ -637,7 +694,16 @@ namespace MultipleUnitDieselsMod
                         continue;
                     }
 
-                    if (car.carType == TrainCarType.LocoDiesel)
+                    if (car.carType == TrainCarType.LocoShunter)
+                    {
+                        LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+
+                        if (locoController)
+                        {
+                            locoController.SetSandersOn(e.newValue >= 0.5f);
+                        }
+                    }
+                    else if (car.carType == TrainCarType.LocoDiesel)
                     {
                         LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
 
@@ -664,7 +730,16 @@ namespace MultipleUnitDieselsMod
                         continue;
                     }
 
-                    if (car.carType == TrainCarType.LocoDiesel)
+                    if (car.carType == TrainCarType.LocoShunter)
+                    {
+                        LocoControllerShunter locoController = car.GetComponent<LocoControllerShunter>();
+
+                        if (locoController)
+                        {
+                            locoController.SetFan(e.newValue >= 0.5f);
+                        }
+                    }
+                    else if (car.carType == TrainCarType.LocoDiesel)
                     {
                         LocoControllerDiesel locoController = car.GetComponent<LocoControllerDiesel>();
 
