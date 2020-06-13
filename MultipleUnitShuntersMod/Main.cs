@@ -20,13 +20,24 @@ namespace MultipleUnitDieselsMod
         }
     }
 
-    // throttle remote control
-    [HarmonyPatch(typeof(LocoControllerBase), "UpdateThrottle")]
-    class LocoControllerBase_UpdateThrottle_Patch
+    // set remote loco
+    [HarmonyPatch(typeof(LocomotiveRemoteController), "Pair")]
+    class LocoControllerBase_Pair_Patch
     {
-        static void Prefix(LocoControllerBase __instance)
+        static void Postfix(LocomotiveRemoteController __instance)
         {
-            Main.remoteCar = __instance.GetComponent<TrainCar>();
+            LocoControllerBase locoController = (LocoControllerBase)typeof(LocomotiveRemoteController).GetField("pairedLocomotive", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(__instance);
+            Main.remoteCar = locoController.GetComponent<TrainCar>();
+        }
+    }
+
+    // unset remote loco
+    [HarmonyPatch(typeof(LocomotiveRemoteController), "Unpair")]
+    class LocoControllerBase_Unpair_Patch
+    {
+        static void Postfix(LocomotiveRemoteController __instance)
+        {
+            Main.remoteCar = null;
         }
     }
 
@@ -81,8 +92,6 @@ namespace MultipleUnitDieselsMod
                     locoController.SetThrottle(throttleLever);
                 }
             }
-
-            Main.remoteCar = null;
         }
     }
 
@@ -136,18 +145,6 @@ namespace MultipleUnitDieselsMod
                     locoController.SetThrottle(throttleLever);
                 }
             }
-
-            Main.remoteCar = null;
-        }
-    }
-
-    // reverser remote control
-    [HarmonyPatch(typeof(LocoControllerBase), "UpdateReverser")]
-    class LocoControllerBase_UpdateReverser_Patch
-    {
-        static void Prefix(LocoControllerBase __instance)
-        {
-            Main.remoteCar = __instance.GetComponent<TrainCar>();
         }
     }
 
@@ -224,8 +221,6 @@ namespace MultipleUnitDieselsMod
                     }
                 }
             }
-
-            Main.remoteCar = null;
         }
 
         public static List<TrainCar> GetCarsInFrontOf(TrainCar car)
@@ -321,8 +316,6 @@ namespace MultipleUnitDieselsMod
                     }
                 }
             }
-
-            Main.remoteCar = null;
         }
 
         public static List<TrainCar> GetCarsInFrontOf(TrainCar car)
@@ -341,16 +334,6 @@ namespace MultipleUnitDieselsMod
             for (coupler = coupler.GetCoupled(); coupler != null; coupler = coupler.GetOppositeCoupler().GetCoupled())
                 trainCarList.Add(coupler.train);
             return trainCarList;
-        }
-    }
-
-    // brake remote control
-    [HarmonyPatch(typeof(LocoControllerBase), "UpdateBrake")]
-    class LocoControllerBase_UpdateBrake_Patch
-    {
-        static void Prefix(LocoControllerBase __instance)
-        {
-            Main.remoteCar = __instance.GetComponent<TrainCar>();
         }
     }
 
@@ -408,18 +391,6 @@ namespace MultipleUnitDieselsMod
                     }
                 }
             }
-
-            Main.remoteCar = null;
-        }
-    }
-
-    // independent brake remote control
-    [HarmonyPatch(typeof(LocoControllerBase), "UpdateIndependentBrake")]
-    class LocoControllerBase_UpdateIndependentBrake_Patch
-    {
-        static void Prefix(LocoControllerBase __instance)
-        {
-            Main.remoteCar = __instance.GetComponent<TrainCar>();
         }
     }
 
@@ -477,8 +448,6 @@ namespace MultipleUnitDieselsMod
                     }
                 }
             }
-
-            Main.remoteCar = null;
         }
     }
 
