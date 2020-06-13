@@ -10,35 +10,49 @@ namespace MultipleUnitDieselsMod
     public class Main
     {
         public static TrainCar remoteCar;
+        private static bool listenersSetup = false;
 
         static bool Load(UnityModManager.ModEntry modEntry)
         {
             var harmony = HarmonyInstance.Create(modEntry.Info.Id);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
 
+            modEntry.OnUpdate = OnUpdate;
+
             return true;
         }
-    }
 
-    // set remote loco
-    [HarmonyPatch(typeof(LocomotiveRemoteController), "Pair")]
-    class LocoControllerBase_Pair_Patch
-    {
-        static void Postfix(LocomotiveRemoteController __instance)
+        static void OnUpdate(UnityModManager.ModEntry mod, float delta)
         {
-            LocoControllerBase locoController = (LocoControllerBase)typeof(LocomotiveRemoteController).GetField("pairedLocomotive", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(__instance);
-            Main.remoteCar = locoController.GetComponent<TrainCar>();
-        }
-    }
+            if (!listenersSetup)
+            {
+                // Gotta wait until we are loaded until registering the listeners
+                if (LoadingScreenManager.IsLoading || !WorldStreamingInit.IsLoaded || !InventoryStartingItems.itemsLoaded) return;
 
-    // unset remote loco
-    [HarmonyPatch(typeof(LocomotiveRemoteController), "Unpair")]
-    class LocoControllerBase_Unpair_Patch
-    {
-        static void Postfix(LocomotiveRemoteController __instance)
-        {
-            Main.remoteCar = null;
+                Grabber grab = PlayerManager.PlayerTransform.GetComponentInChildren<Grabber>();
+                grab.Grabbed += OnItemGrabbedRightNonVR;
+                grab.Released += OnItemUngrabbedRightNonVR;
+                SingletonBehaviour<Inventory>.Instance.ItemAddedToInventory += OnItemAddedToInventory;
+
+                mod.Logger.Log("Listeners have been set up.");
+                listenersSetup = true;
+            }
         }
+
+        // Need to know when we have grabbed a Locomotive Remote
+        // Actual Grab Handlers
+        static void OnItemGrabbedRight(InventoryItemSpec iis)
+        {
+            LocomotiveRemoteController lrc = iis?.GetComponent<LocomotiveRemoteController>();
+
+            LocoControllerBase locoController = (LocoControllerBase)typeof(LocomotiveRemoteController).GetField("pairedLocomotive", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(lrc);
+            remoteCar = locoController.GetComponent<TrainCar>();
+        }
+        static void OnItemUngrabbedRight() { remoteCar = null; }
+        // Grab Listeners
+        static void OnItemAddedToInventory(GameObject o, int _) { OnItemUngrabbedRight(); }
+        static void OnItemGrabbedRightNonVR(GameObject o) { OnItemGrabbedRight(o.GetComponent<InventoryItemSpec>()); }
+        static void OnItemUngrabbedRightNonVR(GameObject o) { OnItemUngrabbedRight(); }
     }
 
     // throttle
