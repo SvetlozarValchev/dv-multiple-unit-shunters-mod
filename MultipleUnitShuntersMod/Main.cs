@@ -44,9 +44,11 @@ namespace MultipleUnitDieselsMod
         static void OnItemGrabbedRight(InventoryItemSpec iis)
         {
             LocomotiveRemoteController lrc = iis?.GetComponent<LocomotiveRemoteController>();
-
-            LocoControllerBase locoController = (LocoControllerBase)typeof(LocomotiveRemoteController).GetField("pairedLocomotive", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(lrc);
-            remoteCar = locoController.GetComponent<TrainCar>();
+            if (lrc != null)
+            {
+                LocoControllerBase locoController = (LocoControllerBase)typeof(LocomotiveRemoteController).GetField("pairedLocomotive", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(lrc);
+                remoteCar = locoController?.GetComponent<TrainCar>();
+            }
         }
         static void OnItemUngrabbedRight() { remoteCar = null; }
         // Grab Listeners
