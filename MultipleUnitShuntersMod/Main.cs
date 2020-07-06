@@ -10,24 +10,51 @@ namespace MultipleUnitDieselsMod
     public class Main
     {
         public static TrainCar remoteCar;
+        private static bool listenersSetup = false;
 
         static bool Load(UnityModManager.ModEntry modEntry)
         {
             var harmony = HarmonyInstance.Create(modEntry.Info.Id);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
 
+            modEntry.OnUpdate = OnUpdate;
+
             return true;
         }
-    }
 
-    // throttle remote control
-    [HarmonyPatch(typeof(LocoControllerBase), "UpdateThrottle")]
-    class LocoControllerBase_UpdateThrottle_Patch
-    {
-        static void Prefix(LocoControllerBase __instance)
+        static void OnUpdate(UnityModManager.ModEntry mod, float delta)
         {
-            Main.remoteCar = __instance.GetComponent<TrainCar>();
+            if (!listenersSetup)
+            {
+                // Gotta wait until we are loaded until registering the listeners
+                if (LoadingScreenManager.IsLoading || !WorldStreamingInit.IsLoaded || !InventoryStartingItems.itemsLoaded) return;
+
+                Grabber grab = PlayerManager.PlayerTransform.GetComponentInChildren<Grabber>();
+                grab.Grabbed += OnItemGrabbedRightNonVR;
+                grab.Released += OnItemUngrabbedRightNonVR;
+                SingletonBehaviour<Inventory>.Instance.ItemAddedToInventory += OnItemAddedToInventory;
+
+                mod.Logger.Log("Listeners have been set up.");
+                listenersSetup = true;
+            }
         }
+
+        // Need to know when we have grabbed a Locomotive Remote
+        // Actual Grab Handlers
+        static void OnItemGrabbedRight(InventoryItemSpec iis)
+        {
+            LocomotiveRemoteController lrc = iis?.GetComponent<LocomotiveRemoteController>();
+            if (lrc != null)
+            {
+                LocoControllerBase locoController = (LocoControllerBase)typeof(LocomotiveRemoteController).GetField("pairedLocomotive", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(lrc);
+                remoteCar = locoController?.GetComponent<TrainCar>();
+            }
+        }
+        static void OnItemUngrabbedRight() { remoteCar = null; }
+        // Grab Listeners
+        static void OnItemAddedToInventory(GameObject o, int _) { OnItemUngrabbedRight(); }
+        static void OnItemGrabbedRightNonVR(GameObject o) { OnItemGrabbedRight(o.GetComponent<InventoryItemSpec>()); }
+        static void OnItemUngrabbedRightNonVR(GameObject o) { OnItemUngrabbedRight(); }
     }
 
     // throttle
@@ -81,8 +108,6 @@ namespace MultipleUnitDieselsMod
                     locoController.SetThrottle(throttleLever);
                 }
             }
-
-            Main.remoteCar = null;
         }
     }
 
@@ -136,18 +161,6 @@ namespace MultipleUnitDieselsMod
                     locoController.SetThrottle(throttleLever);
                 }
             }
-
-            Main.remoteCar = null;
-        }
-    }
-
-    // reverser remote control
-    [HarmonyPatch(typeof(LocoControllerBase), "UpdateReverser")]
-    class LocoControllerBase_UpdateReverser_Patch
-    {
-        static void Prefix(LocoControllerBase __instance)
-        {
-            Main.remoteCar = __instance.GetComponent<TrainCar>();
         }
     }
 
@@ -224,8 +237,6 @@ namespace MultipleUnitDieselsMod
                     }
                 }
             }
-
-            Main.remoteCar = null;
         }
 
         public static List<TrainCar> GetCarsInFrontOf(TrainCar car)
@@ -321,8 +332,6 @@ namespace MultipleUnitDieselsMod
                     }
                 }
             }
-
-            Main.remoteCar = null;
         }
 
         public static List<TrainCar> GetCarsInFrontOf(TrainCar car)
@@ -341,16 +350,6 @@ namespace MultipleUnitDieselsMod
             for (coupler = coupler.GetCoupled(); coupler != null; coupler = coupler.GetOppositeCoupler().GetCoupled())
                 trainCarList.Add(coupler.train);
             return trainCarList;
-        }
-    }
-
-    // brake remote control
-    [HarmonyPatch(typeof(LocoControllerBase), "UpdateBrake")]
-    class LocoControllerBase_UpdateBrake_Patch
-    {
-        static void Prefix(LocoControllerBase __instance)
-        {
-            Main.remoteCar = __instance.GetComponent<TrainCar>();
         }
     }
 
@@ -408,18 +407,6 @@ namespace MultipleUnitDieselsMod
                     }
                 }
             }
-
-            Main.remoteCar = null;
-        }
-    }
-
-    // independent brake remote control
-    [HarmonyPatch(typeof(LocoControllerBase), "UpdateIndependentBrake")]
-    class LocoControllerBase_UpdateIndependentBrake_Patch
-    {
-        static void Prefix(LocoControllerBase __instance)
-        {
-            Main.remoteCar = __instance.GetComponent<TrainCar>();
         }
     }
 
@@ -477,8 +464,6 @@ namespace MultipleUnitDieselsMod
                     }
                 }
             }
-
-            Main.remoteCar = null;
         }
     }
 
